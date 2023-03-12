@@ -7,7 +7,7 @@ use serde_json;
 use std::fs::File;
 use std::io::BufWriter;
 
-#[derive(Hash, Eq, PartialEq, Debug, Deserialize, Serialize)]
+#[derive(Hash, Debug, Deserialize, Serialize)]
 struct FSItem {
     // A File System Item structure
     file_extension: String,
@@ -72,7 +72,7 @@ fn index_directory(path: String, ignore_patterns: &[&str]) -> Vec<FSItem> {
 }
 
 fn main() {
-    // main function
+    // build file system index
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
         println!("[ERROR] No path provided.");
