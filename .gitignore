@@ -16,4 +16,3 @@ src/config.rs
 .vscode
 *.bak
 *.json
-*.txt
