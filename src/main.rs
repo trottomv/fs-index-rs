@@ -1,10 +1,13 @@
-use std::collections::HashMap;
 use std::env;
 use std::path::Path;
 use walkdir::WalkDir;
 mod config;
+use serde::{Deserialize, Serialize};
+use serde_json;
+use std::fs::File;
+use std::io::BufWriter;
 
-#[derive(Hash, Eq, PartialEq, Debug)]
+#[derive(Hash, Eq, PartialEq, Debug, Deserialize, Serialize)]
 struct FSItem {
     // A File System Item structure
     file_extension: String,
@@ -13,27 +16,6 @@ struct FSItem {
     file_size: u64,
     key_words: Option<Vec<String>>,
     project: String,
-}
-
-impl FSItem {
-    // Creates a new FSItem.
-    fn new(
-        file_extension: &str,
-        file_name: &str,
-        file_path: &str,
-        file_size: u64,
-        key_words: Option<Vec<String>>,
-        project: Option<&str>,
-    ) -> FSItem {
-        FSItem {
-            file_name: file_name.to_string(),
-            file_path: file_path.to_string(),
-            file_extension: file_extension.to_string(),
-            file_size: file_size,
-            key_words: key_words,
-            project: project.expect("REASON").to_string(),
-        }
-    }
 }
 
 fn set_project(path: &String) -> &'static str {
@@ -46,7 +28,7 @@ fn set_project(path: &String) -> &'static str {
     ""
 }
 
-fn set_key_words(path: &String) -> Option<Vec<String>> {
+fn set_key_words(path: &String) -> Vec<String> {
     // Tag an item with keywords
     let mut key_words: Vec<String> = vec![];
     for key_word in config::KEY_WORDS {
@@ -54,15 +36,12 @@ fn set_key_words(path: &String) -> Option<Vec<String>> {
             key_words.push(key_word.to_string());
         }
     }
-    if !key_words.is_empty() {
-        return Some(key_words);
-    }
-    None
+    key_words
 }
 
-fn index_directory(path: String, ignore_patterns: &[&str]) -> HashMap<String, FSItem> {
+fn index_directory(path: String, ignore_patterns: &[&str]) -> Vec<FSItem> {
     // indexing a given directory path
-    let mut fs_map = HashMap::new();
+    let mut fs_items = Vec::new();
     let walker = WalkDir::new(path).into_iter().filter_entry(|entry| {
         let file_path = entry.path().to_str().unwrap().to_string();
         !ignore_patterns
@@ -73,29 +52,23 @@ fn index_directory(path: String, ignore_patterns: &[&str]) -> HashMap<String, FS
         if !entry.file_type().is_file() {
             continue;
         }
-        let file_name = entry.file_name().to_str().unwrap().to_string();
         let file_path = entry.path().to_str().unwrap().to_string();
-        let file_extension = entry
-            .path()
-            .extension()
-            .unwrap_or_default()
-            .to_string_lossy();
-        let file_size = entry.metadata().unwrap().len();
-        let project = set_project(&file_path);
-        let key_words = set_key_words(&file_path);
-        fs_map.insert(
-            file_path.clone(),
-            FSItem::new(
-                &file_extension,
-                &file_name,
-                &file_path,
-                file_size,
-                key_words,
-                Some(project),
-            ),
-        );
+        let fs_item = FSItem {
+            file_extension: entry
+                .path()
+                .extension()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string(),
+            file_name: entry.file_name().to_str().unwrap().to_string(),
+            file_path: file_path.clone(),
+            file_size: entry.metadata().unwrap().len(),
+            key_words: Some(set_key_words(&file_path)),
+            project: (set_project(&file_path)).to_string(),
+        };
+        fs_items.push(fs_item)
     }
-    fs_map
+    fs_items
 }
 
 fn main() {
@@ -107,10 +80,14 @@ fn main() {
         std::process::exit(1);
     } else {
         let path = Path::new(&args[1]).to_string_lossy();
-        let fs_map = index_directory(path.to_string(), &config::IGNORE_PATTERNS);
-        for (_file_name, _file_path) in &fs_map {
-            println!("{}: {:#?}", _file_name, _file_path);
-        }
-        println!("{}", fs_map.len());
+        let fs_items = index_directory(path.to_string(), &config::IGNORE_PATTERNS);
+        let output_file = File::create(config::OUTPUT_FILENAME).expect("Unable to create file");
+        let bw = BufWriter::new(output_file);
+        serde_json::to_writer(bw, &fs_items).expect("Failed writing :(");
+        println!(
+            "[INFO] Saved {} items into {}",
+            fs_items.len(),
+            config::OUTPUT_FILENAME
+        );
     }
 }

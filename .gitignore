@@ -15,4 +15,5 @@ src/config.rs
 # Local
 .vscode
 *.bak
+*.json
 *.txt
