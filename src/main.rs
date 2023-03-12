@@ -85,7 +85,7 @@ fn main() {
         let bw = BufWriter::new(output_file);
         serde_json::to_writer(bw, &fs_items).expect("Failed writing :(");
         println!(
-            "[INFO] Saved {} items into {}",
+            "[INFO] {} items saved into {}",
             fs_items.len(),
             config::OUTPUT_FILENAME
         );
