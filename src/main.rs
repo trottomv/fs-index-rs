@@ -14,7 +14,7 @@ struct FSItem {
     file_name: String,
     file_path: String,
     file_size: u64,
-    key_words: Option<Vec<String>>,
+    key_words: Vec<String>,
     project: String,
 }
 
@@ -63,7 +63,7 @@ fn index_directory(path: String, ignore_patterns: &[&str]) -> Vec<FSItem> {
             file_name: entry.file_name().to_str().unwrap().to_string(),
             file_path: file_path.clone(),
             file_size: entry.metadata().unwrap().len(),
-            key_words: Some(set_key_words(&file_path)),
+            key_words: set_key_words(&file_path),
             project: (set_project(&file_path)).to_string(),
         };
         fs_items.push(fs_item)
