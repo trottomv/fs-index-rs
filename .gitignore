@@ -12,6 +12,9 @@ Cargo.lock
 # Configurations
 src/config.rs
 
+# Coverage
+.coverage
+
 # Local
 .vscode
 *.bak

@@ -17,6 +17,15 @@ precommit:  ## Fix code formatting and linting
 precommit_update:  ## Update pre_commit
 	python3 -m pre_commit autoupdate
 
+.PHONY: test
+test:  ## Run test
+	cargo tarpaulin \
+		--offline \
+		--out Html \
+		--output-dir .coverage \
+		--run-types Tests \
+		--skip-clean 
+
 .PHONY: help
 help:
 	@echo "[Help] Makefile list commands:"
