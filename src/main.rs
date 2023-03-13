@@ -7,14 +7,14 @@ use serde_json;
 use std::fs::File;
 use std::io::BufWriter;
 
-#[derive(Hash, Debug, Deserialize, Serialize)]
+#[derive(Hash, Debug, PartialEq, Deserialize, Serialize)]
 struct FSItem {
     // A File System Item structure
     file_extension: String,
     file_name: String,
     file_path: String,
     file_size: u64,
-    key_words: Option<Vec<String>>,
+    key_words: Vec<String>,
     project: String,
 }
 
@@ -63,7 +63,7 @@ fn index_directory(path: String, ignore_patterns: &[&str]) -> Vec<FSItem> {
             file_name: entry.file_name().to_str().unwrap().to_string(),
             file_path: file_path.clone(),
             file_size: entry.metadata().unwrap().len(),
-            key_words: Some(set_key_words(&file_path)),
+            key_words: set_key_words(&file_path),
             project: (set_project(&file_path)).to_string(),
         };
         fs_items.push(fs_item)
@@ -89,5 +89,54 @@ fn main() {
             fs_items.len(),
             config::OUTPUT_FILENAME
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_set_project() {
+        let path = String::from("/path/to/index/file.txt");
+        let project = set_project(&path);
+        assert_eq!(project, "");
+    }
+
+    #[test]
+    fn test_set_key_words() {
+        let path = String::from("/path/to/index/backend/Dockerfile");
+        let key_words = set_key_words(&path);
+        assert!(key_words.contains(&String::from("backend")));
+        assert!(key_words.contains(&String::from("docker")));
+    }
+
+    #[test]
+    fn test_index_directory() {
+        let path = String::from("./test-data");
+        let ignore_patterns = ["ignore.txt"];
+        let fs_items = index_directory(path, &ignore_patterns);
+
+        assert_eq!(fs_items.len(), 2);
+
+        let _expected_items = [
+            FSItem {
+                file_extension: String::from("txt"),
+                file_name: String::from("test1.txt"),
+                file_path: String::from("./test-data/test1.txt"),
+                file_size: 0,
+                key_words: vec![],
+                project: String::from(""),
+            },
+            FSItem {
+                file_extension: String::from("txt"),
+                file_name: String::from("test2.txt"),
+                file_path: String::from("./test-data/test2.txt"),
+                file_size: 0,
+                key_words: vec![],
+                project: String::from(""),
+            },
+        ];
+        assert!(matches!(fs_items, _expected_items));
     }
 }
