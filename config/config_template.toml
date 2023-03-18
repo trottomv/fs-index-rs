@@ -1,0 +1,4 @@
+ignore_patterns = []
+key_words = []
+output_filename = "fs_index.json"
+projects = ["myproject"]

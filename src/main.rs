@@ -1,12 +1,17 @@
-use std::env;
-use std::path::Path;
-use walkdir::WalkDir;
-mod config;
+mod settings;
+use lazy_static::lazy_static;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json;
+use std::env;
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
+use std::path::Path;
+use walkdir::WalkDir;
+
+lazy_static! {
+    pub static ref SETTINGS: settings::Settings = settings::Settings::new().unwrap();
+}
 
 #[derive(Hash, Debug, PartialEq, Deserialize, Serialize)]
 struct FSItem {
@@ -19,11 +24,10 @@ struct FSItem {
     project: String,
 }
 
-fn set_project(path: &String) -> &'static str {
-    // Tag an item with projects
-    for project in config::PROJECTS {
+fn set_project(path: &str) -> &'static str {
+    for project in &SETTINGS.projects {
         if path.to_lowercase().contains(project) {
-            return project;
+            return &project;
         }
     }
     ""
@@ -32,8 +36,8 @@ fn set_project(path: &String) -> &'static str {
 fn set_key_words(path: &String, project: &String, file_name: &String) -> Vec<String> {
     // Tag an item with keywords
     let mut key_words: Vec<String> = vec![];
-    for key_word in config::KEY_WORDS {
-        if path.to_lowercase().contains(key_word) {
+    for key_word in SETTINGS.key_words.to_vec() {
+        if path.to_lowercase().contains(&key_word) {
             key_words.push(key_word.to_string());
         }
     }
@@ -42,7 +46,7 @@ fn set_key_words(path: &String, project: &String, file_name: &String) -> Vec<Str
     key_words
 }
 
-fn index_directory(path: String, ignore_patterns: &[&str]) -> Vec<FSItem> {
+fn index_directory(path: String, ignore_patterns: Vec<String>) -> Vec<FSItem> {
     // indexing a given directory path
     let mut fs_items = Vec::new();
     let walker = WalkDir::new(path).into_iter().filter_entry(|entry| {
@@ -78,7 +82,8 @@ fn index_directory(path: String, ignore_patterns: &[&str]) -> Vec<FSItem> {
 
 fn fts_search(query: &str) {
     // Full Text Search by given query string
-    let file = File::open(Path::new(config::OUTPUT_FILENAME)).unwrap();
+    let filename = SETTINGS.output_filename.to_string();
+    let file = File::open(Path::new(&filename)).unwrap();
     let reader = BufReader::new(file);
     let fs_items: Vec<FSItem> = serde_json::from_reader(reader).unwrap();
     let re = Regex::new(&format!("{}", query)).unwrap();
@@ -100,14 +105,15 @@ fn fts_search(query: &str) {
 }
 
 fn build_index(path: &str) {
-    let fs_items = index_directory(path.to_string(), &config::IGNORE_PATTERNS);
-    let output_file = File::create(config::OUTPUT_FILENAME).expect("Unable to create file");
+    let fs_items = index_directory(path.to_string(), SETTINGS.ignore_patterns.to_vec());
+    let output_file =
+        File::create(SETTINGS.output_filename.to_string()).expect("Unable to create file");
     let bw = BufWriter::new(output_file);
     serde_json::to_writer(bw, &fs_items).expect("Failed writing :(");
     println!(
         "[INFO] {} items saved into {}",
         fs_items.len(),
-        config::OUTPUT_FILENAME
+        SETTINGS.output_filename,
     );
 }
 
@@ -134,6 +140,19 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_fs_item_struct() {
+        let fs_item = FSItem {
+            file_extension: String::from("txt"),
+            file_name: String::from("test.txt"),
+            file_path: String::from("./test-data/test.txt"),
+            file_size: 0,
+            key_words: vec![],
+            project: String::from(""),
+        };
+        assert_eq!(fs_item.file_name, "test.txt");
+    }
+
+    #[test]
     fn test_set_project() {
         let path = String::from("/path/to/index/file.txt");
         let project = set_project(&path);
@@ -155,8 +174,8 @@ mod tests {
     #[test]
     fn test_index_directory() {
         let path = String::from("./test-data");
-        let ignore_patterns = ["ignore.txt"];
-        let fs_items = index_directory(path, &ignore_patterns);
+        let ignore_patterns = ["ignore.txt".to_string()];
+        let fs_items = index_directory(path, ignore_patterns.to_vec());
         assert_eq!(fs_items.len(), 2);
         let _expected_items = [
             FSItem {

@@ -19,3 +19,4 @@ src/config.rs
 .vscode
 *.bak
 *.json
+config/config.toml

@@ -1,0 +1,5 @@
+debug = true
+ignore_patterns = []
+key_words = ["backend", "docker"]
+output_filename = "fs_index.json"
+projects = ["myproject"]
