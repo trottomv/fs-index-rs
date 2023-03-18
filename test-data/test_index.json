@@ -1,0 +1,18 @@
+[
+  {
+    "file_extension": "txt",
+    "file_name": "test1.txt",
+    "file_path": "./test-data/path/test1.txt",
+    "file_size": 0,
+    "key_words": ["", "test1.txt"],
+    "project": ""
+  },
+  {
+    "file_extension": "txt",
+    "file_name": "test2.txt",
+    "file_path": "./test-data/path/test2.txt",
+    "file_size": 0,
+    "key_words": ["", "test2.txt"],
+    "project": ""
+  }
+]

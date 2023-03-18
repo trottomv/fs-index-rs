@@ -35,7 +35,7 @@ mod tests {
     fn test_settings() {
         let settings: settings::Settings = settings::Settings::new().unwrap();
         assert_eq!(settings.projects, ["myproject"]);
-        assert_eq!(settings.output_filename, "fs_index.json");
+        assert_eq!(settings.output_filename, "test-data/test_index.json");
         assert_eq!(settings.key_words, ["backend", "docker"]);
         assert_eq!(settings.ignore_patterns.len(), 0);
     }

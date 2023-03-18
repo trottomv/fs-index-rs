@@ -13,7 +13,7 @@ lazy_static! {
     pub static ref SETTINGS: settings::Settings = settings::Settings::new().unwrap();
 }
 
-#[derive(Hash, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Hash, Debug, PartialEq, Deserialize, Serialize)]
 struct FSItem {
     // A File System Item structure
     file_extension: String,
@@ -80,30 +80,6 @@ fn index_directory(path: String, ignore_patterns: Vec<String>) -> Vec<FSItem> {
     fs_items
 }
 
-fn fts_search(query: &str) {
-    // Full Text Search by given query string
-    let filename = SETTINGS.output_filename.to_string();
-    let file = File::open(Path::new(&filename)).unwrap();
-    let reader = BufReader::new(file);
-    let fs_items: Vec<FSItem> = serde_json::from_reader(reader).unwrap();
-    let re = Regex::new(&format!("{}", query)).unwrap();
-    let mut matching_items: Vec<&FSItem> = vec![];
-    let binding = re.to_string().to_lowercase();
-    let query_words: Vec<&str> = binding.split_whitespace().collect();
-    let _fs_items_response: Vec<&FSItem> = fs_items
-        .iter()
-        .filter(|&fs_item| {
-            query_words
-                .iter()
-                .all(|&word| fs_item.key_words.contains(&(*word).to_string()))
-        })
-        .collect();
-    matching_items.extend(_fs_items_response);
-    for item in matching_items {
-        println!("{:?}", item.file_path);
-    }
-}
-
 fn build_index(path: &str) {
     let fs_items = index_directory(path.to_string(), SETTINGS.ignore_patterns.to_vec());
     let output_file =
@@ -117,6 +93,29 @@ fn build_index(path: &str) {
     );
 }
 
+fn fts_search(query: &str) -> Vec<FSItem> {
+    // Full Text Search by given query string
+    let filename = SETTINGS.output_filename.to_string();
+    let file = File::open(Path::new(&filename)).unwrap();
+    let reader = BufReader::new(file);
+    let fs_items: Vec<FSItem> = serde_json::from_reader(reader).unwrap();
+    let re = Regex::new(&format!("{}", query)).unwrap();
+    let binding = re.to_string().to_lowercase();
+    let query_words: Vec<&str> = binding.split_whitespace().collect();
+    let _fs_items_response: Vec<FSItem> = fs_items
+        .iter()
+        .filter(|&fs_item| {
+            query_words
+                .iter()
+                .all(|&word| fs_item.key_words.contains(&(*word).to_string()))
+        })
+        .cloned()
+        .collect();
+    let mut matching_items: Vec<FSItem> = vec![];
+    matching_items.extend(_fs_items_response);
+    matching_items
+}
+
 fn main() {
     // The main function
     let args: Vec<String> = env::args().collect();
@@ -127,7 +126,10 @@ fn main() {
         std::process::exit(1);
     } else if args[1] == "search" {
         // Run search
-        fts_search(&args[2]);
+        let search_response = fts_search(&args[2]);
+        for item in search_response {
+            println!("{:?}", item.file_path);
+        }
     } else {
         // Run build file system index
         let path = Path::new(&args[1]).to_string_lossy();
@@ -157,6 +159,9 @@ mod tests {
         let path = String::from("/path/to/index/file.txt");
         let project = set_project(&path);
         assert_eq!(project, "");
+        let path = String::from("/path/to/index/myproject/file.txt");
+        let project = set_project(&path);
+        assert_eq!(project, "myproject");
     }
 
     #[test]
@@ -173,7 +178,7 @@ mod tests {
 
     #[test]
     fn test_index_directory() {
-        let path = String::from("./test-data");
+        let path = String::from("./test-data/path/");
         let ignore_patterns = ["ignore.txt".to_string()];
         let fs_items = index_directory(path, ignore_patterns.to_vec());
         assert_eq!(fs_items.len(), 2);
@@ -181,7 +186,7 @@ mod tests {
             FSItem {
                 file_extension: String::from("txt"),
                 file_name: String::from("test1.txt"),
-                file_path: String::from("./test-data/test1.txt"),
+                file_path: String::from("./test-data/path/test1.txt"),
                 file_size: 0,
                 key_words: vec![],
                 project: String::from(""),
@@ -189,12 +194,56 @@ mod tests {
             FSItem {
                 file_extension: String::from("txt"),
                 file_name: String::from("test2.txt"),
-                file_path: String::from("./test-data/test2.txt"),
+                file_path: String::from("./test-data/path/test2.txt"),
                 file_size: 0,
                 key_words: vec![],
                 project: String::from(""),
             },
         ];
         assert!(matches!(fs_items, _expected_items));
+    }
+
+    #[test]
+    fn test_build_index() {
+        let path = String::from("./test-data/path/");
+        let index_output_file = build_index(&path);
+        assert_eq!(index_output_file, ());
+        let filename = SETTINGS.output_filename.to_string();
+        let file = File::open(Path::new(&filename)).unwrap();
+        let reader = BufReader::new(file);
+        let fs_items: Vec<FSItem> = serde_json::from_reader(reader).unwrap();
+        let _expected_items = [
+            FSItem {
+                file_extension: String::from("txt"),
+                file_name: String::from("test1.txt"),
+                file_path: String::from("./test-data/path/test1.txt"),
+                file_size: 0,
+                key_words: vec!["".to_string(), "test1.txt".to_string()],
+                project: String::from(""),
+            },
+            FSItem {
+                file_extension: String::from("txt"),
+                file_name: String::from("test2.txt"),
+                file_path: String::from("./test-data/path/test2.txt"),
+                file_size: 0,
+                key_words: vec!["".to_string(), "test2.txt".to_string()],
+                project: String::from(""),
+            },
+        ];
+        assert_eq!(fs_items, _expected_items)
+    }
+
+    #[test]
+    fn test_fts_search() {
+        let path = String::from("./test-data/path/");
+        build_index(&path);
+        let search_result = fts_search("test1.txt");
+        assert_eq!(search_result.len(), 1);
+        assert_eq!(search_result[0].file_path, "./test-data/path/test1.txt");
+        let search_result = fts_search("test1.txt");
+        assert_eq!(search_result.len(), 1);
+        assert_eq!(search_result[0].file_path, "./test-data/path/test1.txt");
+        let search_result = fts_search("myproject");
+        assert_eq!(search_result.len(), 0);
     }
 }
