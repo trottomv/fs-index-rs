@@ -7,13 +7,13 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
-  build_and_test:
+  test:
     strategy:
       fail-fast: false
       matrix:
         version: [stable, nightly]
 
-    name: ${{ matrix.version }}
+    name: test_${{ matrix.version }}
     runs-on: ubuntu-latest
 
     env:
@@ -38,3 +38,17 @@ jobs:
       - name: cargo test
         run: cargo test --workspace --all-features --no-fail-fast
         timeout-minutes: 30
+
+  coverage:
+    name: coverage
+    runs-on: ubuntu-latest
+    container:
+      image: xd009642/tarpaulin:develop-nightly
+      options: --security-opt seccomp=unconfined
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Generate code coverage
+        run: |
+          cargo +nightly tarpaulin --all-features --workspace --timeout 120 --fail-under 90 --out Xml
