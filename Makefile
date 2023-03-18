@@ -20,6 +20,7 @@ precommit_update:  ## Update pre_commit
 .PHONY: test
 test:  ## Run test
 	cargo tarpaulin \
+		--fail-under 80 \
 		--offline \
 		--out Html \
 		--output-dir .coverage \
