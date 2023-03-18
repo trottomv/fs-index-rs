@@ -240,9 +240,9 @@ mod tests {
         let search_result = fts_search("test1.txt");
         assert_eq!(search_result.len(), 1);
         assert_eq!(search_result[0].file_path, "./test-data/path/test1.txt");
-        let search_result = fts_search("test1.txt");
+        let search_result = fts_search("test2.txt");
         assert_eq!(search_result.len(), 1);
-        assert_eq!(search_result[0].file_path, "./test-data/path/test1.txt");
+        assert_eq!(search_result[0].file_path, "./test-data/path/test2.txt");
         let search_result = fts_search("myproject");
         assert_eq!(search_result.len(), 0);
     }
