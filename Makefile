@@ -3,7 +3,8 @@
 .PHONY: check
 check:  ## Check app configuration
 	cargo check
-	cargo audit bin ~/.cargo/bin/fs-index
+	cargo auditable build --release
+	cargo audit bin target/release/fs-index
 
 .PHONY: run
 fix:  ## Fix formatting and linting
