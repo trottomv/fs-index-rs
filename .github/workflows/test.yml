@@ -35,6 +35,14 @@ jobs:
         run: cargo check --workspace --bins --examples --tests
         timeout-minutes: 30
 
+      - name: cargo build auditable release
+        run: cargo install cargo-auditable && cargo auditable build --release
+        timeout-minutes: 30
+
+      - name: cargo audit
+        run: cargo audit bin target/release/fs-index
+        timeout-minutes: 30
+
       - name: cargo test
         run: cargo test --workspace --all-features --no-fail-fast
         timeout-minutes: 30
