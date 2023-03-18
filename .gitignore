@@ -19,3 +19,5 @@ src/config.rs
 .vscode
 *.bak
 *.json
+!test_index.json
+config/config.toml
