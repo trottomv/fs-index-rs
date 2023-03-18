@@ -116,6 +116,7 @@ fn fts_search(query: &str) -> Vec<FSItem> {
     matching_items
 }
 
+#[cfg(not(tarpaulin_include))]
 fn main() {
     // The main function
     let args: Vec<String> = env::args().collect();

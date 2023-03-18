@@ -3,7 +3,7 @@
 .PHONY: check
 check:  ## Check app configuration
 	cargo check
-	cargo audit
+	cargo audit bin ~/.cargo/bin/fs-index
 
 .PHONY: run
 fix:  ## Fix formatting and linting
@@ -17,15 +17,22 @@ precommit:  ## Fix code formatting and linting
 precommit_update:  ## Update pre_commit
 	python3 -m pre_commit autoupdate
 
-.PHONY: test
-test:  ## Run test
+.PHONY: coverage
+coverage:  ## Run test
 	cargo tarpaulin \
-		--fail-under 80 \
+		--bin fs-index \
+		--fail-under 90 \
 		--offline \
 		--out Html \
 		--output-dir .coverage \
 		--run-types Tests \
-		--skip-clean 
+		--skip-clean
+
+.PHONY: test
+test:  ## Run test
+	cargo test \
+		--bin fs-index \
+		--offline
 
 .PHONY: help
 help:
